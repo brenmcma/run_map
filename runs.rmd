@@ -1,0 +1,75 @@
+Initial Setup
+```{r}
+setwd("~/Desktop/dev/")
+
+x <- c("rgdal", "class",  "dplyr", "maps", "plotKML")
+lapply(x, require, character.only = TRUE)
+```
+
+```{r}
+setwd("~/Desktop/dev/run_map/activities/")
+files <- dir(pattern = "\\.gpx")
+
+# Consolidate routes in one drata frame
+index <- c()
+lat <- c()
+long <- c()
+
+for (i in 1:length(files)) {
+  print(i)
+  route <- readGPX(files[i])
+  try({
+    location <- route$tracks[[1]][[1]]
+  
+    index <- c(index, rep(i, dim(location)[1]))
+    lat <- c(lat, location$lat)
+    long <- c(long, location$lon)
+  }
+  )
+}
+routes <- data.frame(cbind(index, lat, long))
+```
+
+```{r}
+# Zoom into a particular area of routes
+zoom <- function(routes, lat, long, radius) {
+  lat_north <- lat + radius
+  long_west <- long - radius
+  lat_south <- lat - radius
+  long_east <- long + radius
+  routes.filtered <- routes[routes$lat < lat_north & routes$lat > lat_south & routes$long > long_west & routes$long < long_east, ]
+
+  plot(routes.filtered$long, routes.filtered$lat, type="n", axes=FALSE, xlab="", ylab="", main="", asp=1)
+  route_groups <- unique(routes.filtered$index)
+  for (i in 1:length(route_groups)) {
+    currRoute <- subset(routes.filtered, index==route_groups[i])
+    lines(currRoute$long, currRoute$lat, col="#FF0000", lwd = 2)
+  }
+}
+```
+
+```{r}
+# Map the routes
+ids <- unique(index)
+plot(routes$long, routes$lat, type="n", axes=FALSE, xlab="", ylab="", main="", asp=1)
+for (i in 1:length(ids)) {
+  currRoute <- subset(routes, index==ids[i])
+  lines(currRoute$long, currRoute$lat, col="#FF0000")
+}
+```
+
+```{r}
+philly_lat <- 39.9526
+philly_long <- -75.1652
+radius <- 0.1
+
+width = 40
+height = 40
+
+setwd("~/Desktop/dev/run_map/")
+
+pdf("runs.pdf",width=width,height=height)
+zoom(routes, philly_lat, philly_long, radius)
+dev.off()
+
+```
